@@ -1,0 +1,46 @@
+services:
+  redis:
+    image: docker.io/library/redis:7-alpine
+    container_name: customer-portal-redis
+    ports:
+      - "16379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  customer-service:
+    build: ./customer-service
+    container_name: customer-portal-customer-service
+    ports:
+      - "18081:8081"
+
+  order-service:
+    build: ./order-service
+    container_name: customer-portal-order-service
+    ports:
+      - "18082:8082"
+
+  payment-service:
+    build: ./payment-service
+    container_name: customer-portal-payment-service
+    ports:
+      - "18083:8083"
+
+  bff-gateway:
+    build: ./bff-gateway
+    container_name: customer-portal-bff-gateway
+    ports:
+      - "18080:8080"
+    environment:
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      CUSTOMER_SERVICE_URL: http://customer-service:8081
+      ORDER_SERVICE_URL: http://order-service:8082
+      PAYMENT_SERVICE_URL: http://payment-service:8083
+    depends_on:
+      - redis
+      - customer-service
+      - order-service
+      - payment-service
