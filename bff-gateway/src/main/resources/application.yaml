@@ -1,0 +1,93 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: bff-gateway
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+
+app:
+  security:
+    jwt:
+      secret: ${JWT_SECRET:change-this-demo-secret-change-this-demo-secret}
+      expiration-minutes: 30
+  clients:
+    customer-service:
+      base-url: ${CUSTOMER_SERVICE_URL:http://localhost:8081}
+      timeout-millis: 2000
+    order-service:
+      base-url: ${ORDER_SERVICE_URL:http://localhost:8082}
+      timeout-millis: 2000
+    payment-service:
+      base-url: ${PAYMENT_SERVICE_URL:http://localhost:8083}
+      timeout-millis: 2000
+  cache:
+    portal-ttl-seconds: 30
+
+resilience4j:
+  circuitbreaker:
+    configs:
+      default:
+        registerHealthIndicator: true
+        slidingWindowType: COUNT_BASED
+        slidingWindowSize: 10
+        minimumNumberOfCalls: 5
+        failureRateThreshold: 50
+        waitDurationInOpenState: 10s
+        permittedNumberOfCallsInHalfOpenState: 3
+    instances:
+      customerService:
+        baseConfig: default
+        ignoreExceptions:
+          - com.marcosperboni.customerbff.domain.exception.CustomerNotFoundException
+      orderService:
+        baseConfig: default
+      paymentService:
+        baseConfig: default
+  retry:
+    configs:
+      default:
+        maxAttempts: 3
+        waitDuration: 200ms
+        enableExponentialBackoff: true
+        exponentialBackoffMultiplier: 2
+    instances:
+      customerService:
+        baseConfig: default
+        ignoreExceptions:
+          - com.marcosperboni.customerbff.domain.exception.CustomerNotFoundException
+      orderService:
+        baseConfig: default
+      paymentService:
+        baseConfig: default
+  timelimiter:
+    configs:
+      default:
+        timeoutDuration: 2s
+        cancelRunningFuture: true
+    instances:
+      customerService:
+        baseConfig: default
+      orderService:
+        baseConfig: default
+      paymentService:
+        baseConfig: default
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,circuitbreakers,metrics
+  endpoint:
+    health:
+      show-details: when-authorized
+  health:
+    circuitbreakers:
+      enabled: true
+
+logging:
+  pattern:
+    level: "%5p [%X{correlationId}]"
